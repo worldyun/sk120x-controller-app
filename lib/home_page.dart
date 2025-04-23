@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:knob_widget/knob_widget.dart';
@@ -37,8 +36,8 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   double currentVoltage = 24.02;
   double currentCurrent = 0.0;
   double currentPower = 0.0;
-  double totalEnergy = 0.0;
-  double totalmAh = 0.0;
+  int totalEnergymWh = 0;
+  int totalmAh = 0;
   bool powerOn = false;
   bool isDeviceInit = false;
   Ble ble = Ble();
@@ -119,8 +118,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
           setState(() {
             setVoltage = value;
             _controllerV.setCurrentValue(value);
-            int newSetVInt = (value * 100.0).truncate();
-            ble.setConfigValue("vSet", newSetVInt);
           });
         });
         break;
@@ -129,8 +126,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
           setState(() {
             setCurrent = value;
             _controllerA.setCurrentValue(value);
-            int newSetAInt = (value * 1000.0).truncate();
-            ble.setConfigValue("iSet", newSetAInt);
           });
         });
         break;
@@ -164,6 +159,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       maximum: _maximumA,
       startAngle: 0,
       endAngle: 360,
+      precision : 3,
     );
     _controllerA.addOnValueChangedListener(valueChangedListenerA);
     initEvent();
@@ -212,8 +208,8 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       currentVoltage = skDevice.vOut / 100.0;
       currentCurrent = skDevice.iOut / 1000.0;
       currentPower = skDevice.wOut / 100.0;
-      totalEnergy = skDevice.whOut / 100.0;
-      totalmAh = skDevice.ahOut / 1.00;
+      totalEnergymWh = skDevice.whOut;
+      totalmAh = skDevice.ahOut;
       powerOn = skDevice.outEnable == 1;
       if (!isUpdating) {
         setVoltage = skDevice.vSet / 100.0;
@@ -330,8 +326,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                     setState(() {
                       setVoltage = value;
                       _controllerV.setCurrentValue(value);
-                      int newSetVInt = (value * 100.0).truncate();
-                      ble.setConfigValue("vSet", newSetVInt);
                     });
                   });
                 }),
@@ -341,8 +335,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                     setState(() {
                       setCurrent = value;
                       _controllerA.setCurrentValue(value);
-                      int newSetAInt = (value * 1000.0).truncate();
-                      ble.setConfigValue("iSet", newSetAInt);
                     });
                   });
                 }),
@@ -351,9 +343,9 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                 _buildInfoCard(
                     '电量',
                     isViveTotalmAh
-                        ? totalmAh.toStringAsFixed(3)
-                        : totalEnergy.toStringAsFixed(3),
-                    isViveTotalmAh ? 'Ah' : 'Wh', () {
+                        ? totalmAh.toString().padLeft(3, '0')
+                        : totalEnergymWh.toString().padLeft(3, '0'),
+                    isViveTotalmAh ? 'mAh' : 'mWh', () {
                   setState(() {
                     isViveTotalmAh = !isViveTotalmAh;
                   });
@@ -402,34 +394,30 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
               children: [
                 _buildCombinedInfoCard('电压', setVoltage.toStringAsFixed(2),
                     currentVoltage.toStringAsFixed(2), 'V', () {
-                  _showSettingDialog(context, '设置电压', (value) {
-                    setState(() {
-                      setVoltage = value;
-                      _controllerV.setCurrentValue(value);
-                      int newSetVInt = (value * 100.0).truncate();
-                      ble.setConfigValue("vSet", newSetVInt);
-                    });
-                  });
+                  // _showSettingDialog(context, '设置电压', (value) {
+                  //   setState(() {
+                  //     setVoltage = value;
+                  //     _controllerV.setCurrentValue(value);
+                  //   });
+                  // });
                 }),
                 _buildCombinedInfoCard('电流', setCurrent.toStringAsFixed(3),
                     currentCurrent.toStringAsFixed(3), 'A', () {
-                  _showSettingDialog(context, '设置电流', (value) {
-                    setState(() {
-                      setCurrent = value;
-                      _controllerA.setCurrentValue(value);
-                      int newSetAInt = (value * 1000.0).truncate();
-                      ble.setConfigValue("iSet", newSetAInt);
-                    });
-                  });
+                  // _showSettingDialog(context, '设置电流', (value) {
+                  //   setState(() {
+                  //     setCurrent = value;
+                  //     _controllerA.setCurrentValue(value);
+                  //   });
+                  // });
                 }),
                 _buildInfoCard(
                     '功率', currentPower.toStringAsFixed(3), 'W', () {}),
                 _buildInfoCard(
                     '电量',
                     isViveTotalmAh
-                        ? totalmAh.toStringAsFixed(3)
-                        : totalEnergy.toStringAsFixed(3),
-                    isViveTotalmAh ? 'Ah' : 'Wh', () {
+                        ? totalmAh.toString().padLeft(3, '0')
+                        : totalEnergymWh.toString().padLeft(3, '0'),
+                    isViveTotalmAh ? 'mAh' : 'mWh', () {
                   setState(() {
                     isViveTotalmAh = !isViveTotalmAh;
                   });
