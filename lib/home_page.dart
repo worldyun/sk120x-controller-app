@@ -47,6 +47,9 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   Timer? knodUpdateTimer;
   double newSetV = 0.0;
   double newSetA = 0.0;
+  bool isFirstTimeV = true;
+  bool isFirstTimeA = true;
+  bool devicePowerOn = false;
 
   late StreamSubscription<BleEvent> bleEvent;
 
@@ -97,9 +100,17 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       knodUpdateTimer = Timer(const Duration(milliseconds: 500), () async {
         try {
           if (type == "V") {
+            if (isFirstTimeV) {
+              isFirstTimeV = false;
+              return;
+            }
             int newSetVInt = (newSetV * 100.0).truncate();
             await ble.setConfigValue("vSet", newSetVInt);
           } else if (type == "A") {
+            if (isFirstTimeA) {
+              isFirstTimeA = false;
+              return;
+            }
             int newSetAInt = (newSetA * 1000.0).truncate();
             await ble.setConfigValue("iSet", newSetAInt);
           }
@@ -159,7 +170,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       maximum: _maximumA,
       startAngle: 0,
       endAngle: 360,
-      precision : 3,
+      precision: 3,
     );
     _controllerA.addOnValueChangedListener(valueChangedListenerA);
     initEvent();
@@ -170,14 +181,12 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   }
 
   void powerSwitch(bool value) {
-    setState(() {
-      powerOn = value;
-      if (powerOn) {
-        ble.setConfigValue("outEnable", 1);
-      } else {
-        ble.setConfigValue("outEnable", 0);
-      }
-    });
+    powerOn = value;
+    if (powerOn) {
+      ble.setConfigValue("outEnable", 1);
+    } else {
+      ble.setConfigValue("outEnable", 0);
+    }
   }
 
   void initEvent() {
@@ -185,18 +194,33 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       if (event.eventCode == "bleOff" || event.eventCode == "disconnected") {
         setState(() {
           isDeviceInit = false;
+          isFirstTimeA = true;
+          isFirstTimeV = true;
         });
       }
       if (event.eventCode == "skDeviceInit") {
         setState(() {
+          isFirstTimeA = true;
+          isFirstTimeV = true;
+          isUpdating = false;
           isDeviceInit = true;
           skDevice = event.skDevice!;
+          if (skDevice.deviceStatus == 0) {
+            devicePowerOn = true;
+          } else {
+            devicePowerOn = false;
+            //设置一秒后执行
+            Future.delayed(const Duration(seconds: 1), () {
+              ble.refreshAllConfig();
+            });
+          }
         });
         _parseData();
         _controllerA.setCurrentValue(skDevice.iSet / 1000.0);
         _controllerV.setCurrentValue(skDevice.vSet / 100.0);
       }
-      if (event.eventCode == "notifyTop10REGReceived") {
+      if (event.eventCode == "notifyTop10REGReceived" ||
+          event.eventCode == "skDeviceUpdate") {
         skDevice = event.skDevice!;
         _parseData();
       }
@@ -275,8 +299,9 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   @override
   Widget build(BuildContext context) {
     buildContext = context;
+    String text = devicePowerOn ? '正在搜索设备, 请打开蓝牙' : '设备未开机';
     return Scaffold(
-      body: isDeviceInit
+      body: isDeviceInit && devicePowerOn
           ? OrientationBuilder(
               builder: (context, orientation) {
                 return orientation == Orientation.portrait
@@ -284,10 +309,10 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                     : _buildLandscapeLayout();
               },
             )
-          : const Center(
+          : Center(
               child: Text(
-                '正在连接设备, 请打开蓝牙',
-                style: TextStyle(fontSize: 24.0),
+                text,
+                style: const TextStyle(fontSize: 24.0),
               ),
             ),
     );

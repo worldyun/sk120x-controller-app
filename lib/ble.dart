@@ -152,6 +152,13 @@ class Ble {
     eventBus.fire(BleEvent("servicesDiscovered"));
   }
 
+  //刷新所有配置
+  Future<void> refreshAllConfig() async {
+    List<int> bytes = await allConfigCharacteristic.read();
+    skDevice = SkDevice.parseFromBytes(bytes);
+    eventBus.fire(BleEvent("skDeviceInit", skDevice: skDevice));
+  }
+
   Future<void> setConfigValue(String fieldName, int value) async {
     int offset = skDevice.skDeviceFieldOffsets[fieldName] ?? -1;
     if (offset == -1) {
@@ -181,6 +188,7 @@ class Ble {
       int regDataRead = (readDate[1] << 8) | readDate[0];
       if (regDataRead != regData) {
         MyToast.showToast(context, "设置失败");
+        refreshAllConfig();
       } else {
         //更新skDevice对象
         skDevice.setRegisterValue(regNumber, regDataRead);
