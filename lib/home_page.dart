@@ -299,7 +299,12 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   @override
   Widget build(BuildContext context) {
     buildContext = context;
-    String text = devicePowerOn ? '正在搜索设备, 请打开蓝牙' : '设备未开机';
+    String text = '';
+    if (!isDeviceInit) {
+      text = '正在搜索设备, 请打开蓝牙';
+    } else if (!devicePowerOn) {
+      text = '设备未开机';
+    }
     return Scaffold(
       body: isDeviceInit && devicePowerOn
           ? OrientationBuilder(
