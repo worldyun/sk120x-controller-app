@@ -53,6 +53,8 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   bool isFirstTimeV = true;
   bool isFirstTimeA = true;
   bool devicePowerOn = false;
+  // 间隔时间
+  int interval = 1500;
 
   late StreamSubscription<BleEvent> bleEvent;
 
@@ -75,8 +77,18 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   late BuildContext buildContext;
 
   void valueChangedListenerV(double value) {
+    if (isFirstTimeV) {
+      isFirstTimeV = false;
+      return;
+    }
     isUpdating = true;
     if (setVoltage != value) {
+      value = (value * 10).roundToDouble() / 10;
+      interval = 1500;
+    } else {
+      interval = 100;
+    }
+    if (newSetV != value) {
       Vibration.vibrate(duration : 25);
     }
     if (mounted) {
@@ -89,8 +101,18 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   }
 
   void valueChangedListenerA(double value) {
+    if (isFirstTimeA) {
+      isFirstTimeA = false;
+      return;
+    }
     isUpdating = true;
     if (setCurrent != value) {
+      value = (value * 20).roundToDouble() / 20;
+      interval = 1500;
+    } else {
+      interval = 100;
+    }
+    if (newSetA != value) {
       Vibration.vibrate(duration : 25);
     }
     if (mounted) {
@@ -102,28 +124,20 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
     }
   }
 
-  //消除抖动更新电压与电流 两次更新之间的间隔不得小于500ms
+  //消除抖动更新电压与电流 两次更新之间的间隔不得小于interval ms
   void knobUpdateVale(String type) async {
     if (knodUpdateTimer != null) {
       // 如果定时器已存在，取消之前的定时器
       knodUpdateTimer!.cancel();
       knodUpdateTimer = null;
     } 
-    knodUpdateTimer = Timer(const Duration(milliseconds: 500), () async {
+    knodUpdateTimer = Timer(Duration(milliseconds: interval), () async {
       bool isSuccess = false;
       try {
         if (type == "V") {
-          if (isFirstTimeV) {
-            isFirstTimeV = false;
-            return;
-          }
           int newSetVInt = (newSetV * 100.0).truncate();
           isSuccess = await ble.setConfigValue("vSet", newSetVInt);
         } else if (type == "A") {
-          if (isFirstTimeA) {
-            isFirstTimeA = false;
-            return;
-          }
           int newSetAInt = (newSetA * 1000.0).truncate();
           isSuccess = await ble.setConfigValue("iSet", newSetAInt);
         }
@@ -181,7 +195,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       maximum: _maximumV,
       startAngle: 0,
       endAngle: 315,
-      precision: 2,
+      precision: 3,
     );
     _controllerV.addOnValueChangedListener(valueChangedListenerV);
 
@@ -305,7 +319,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('输入值超出范围！'),
-                        duration: Duration(seconds: 2),
+                        duration: Duration(seconds: 3),
                       ),
                     );
                     return;
@@ -402,6 +416,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                         ? totalmAh.toString().padLeft(3, '0')
                         : totalEnergymWh.toString().padLeft(3, '0'),
                     isViveTotalmAh ? 'mAh' : 'mWh', () {
+                  Vibration.vibrate(duration : 25);
                   setState(() {
                     isViveTotalmAh = !isViveTotalmAh;
                   });
@@ -474,6 +489,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                         ? totalmAh.toString().padLeft(3, '0')
                         : totalEnergymWh.toString().padLeft(3, '0'),
                     isViveTotalmAh ? 'mAh' : 'mWh', () {
+                  Vibration.vibrate(duration : 25);
                   setState(() {
                     isViveTotalmAh = !isViveTotalmAh;
                   });
