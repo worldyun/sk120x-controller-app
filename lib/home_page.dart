@@ -257,6 +257,8 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
           }
         });
         _parseData();
+        isFirstTimeA = true;
+        isFirstTimeV = true;
         _controllerA.setCurrentValue(skDevice.iSet / 1000.0);
         _controllerV.setCurrentValue(skDevice.vSet / 100.0);
       }
@@ -280,8 +282,16 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       totalmAh = skDevice.ahOut;
       powerOn = skDevice.outEnable == 1;
       if (!isUpdating) {
-        setVoltage = skDevice.vSet / 100.0;
-        setCurrent = skDevice.iSet / 1000.0;
+        if (setVoltage != skDevice.vSet / 100.0) {
+          isFirstTimeV = true;
+          setVoltage = skDevice.vSet / 100.0;
+          _controllerV.setCurrentValue(setVoltage);
+        }
+        if (setCurrent != skDevice.iSet / 1000.0) {
+          isFirstTimeA = true;
+          setCurrent = skDevice.iSet / 1000.0;
+          _controllerA.setCurrentValue(setCurrent);
+        }
       }
     });
   }
