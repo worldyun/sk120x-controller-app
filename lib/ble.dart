@@ -95,7 +95,7 @@ class Ble {
         eventBus.fire(BleEvent("disconnected"));
         MyToast.showToast(context, "连接已断开 ${device.advName}");
         //定时3秒后重新扫描
-        await Future.delayed(const Duration(seconds: 1));
+        await Future.delayed(const Duration(seconds: 3));
         initScan();
       } else if (state == BluetoothConnectionState.connected) {
         MyToast.showToast(context, "设备已连接 ${device.advName}");
@@ -159,17 +159,17 @@ class Ble {
     eventBus.fire(BleEvent("skDeviceInit", skDevice: skDevice));
   }
 
-  Future<void> setConfigValue(String fieldName, int value) async {
+  Future<bool> setConfigValue(String fieldName, int value) async {
     int offset = skDevice.skDeviceFieldOffsets[fieldName] ?? -1;
     if (offset == -1) {
       MyToast.showToast(context, "未知寄存器 $fieldName");
-      return;
+      return false;
     }
     int regNunber = offset ~/ 2;
-    await writeRegister(regNunber, value);
+    return await writeRegister(regNunber, value);
   }
 
-  Future<void> writeRegister(int regNumber, int regData) async {
+  Future<bool> writeRegister(int regNumber, int regData) async {
     //处理小端字节序
     int regDataLow = regData & 0xFF;
     int regDataHigh = (regData >> 8) & 0xFF;
@@ -189,13 +189,16 @@ class Ble {
       if (regDataRead != regData) {
         MyToast.showToast(context, "设置失败");
         refreshAllConfig();
+        return false;
       } else {
         //更新skDevice对象
         skDevice.setRegisterValue(regNumber, regDataRead);
         eventBus.fire(BleEvent("skDeviceUpdate", skDevice: skDevice));
+        return true;
       }
     } else {
       MyToast.showToast(context, "设置失败");
+      return false;
     }
   }
 }
