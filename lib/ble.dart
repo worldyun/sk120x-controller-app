@@ -166,7 +166,9 @@ class Ble {
       return false;
     }
     int regNunber = offset ~/ 2;
-    return await writeRegister(regNunber, value);
+
+    // 失败后重试一次
+    return (await writeRegister(regNunber, value)) ? true : (await writeRegister(regNunber, value));
   }
 
   Future<bool> writeRegister(int regNumber, int regData) async {

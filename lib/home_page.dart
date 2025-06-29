@@ -89,7 +89,9 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       interval = 100;
     }
     if (newSetV != value) {
-      Vibration.vibrate(duration : 25);
+      Vibration.vibrate(duration : 15);
+    } else {
+      return;
     }
     if (mounted) {
       setState(() {
@@ -113,7 +115,9 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       interval = 100;
     }
     if (newSetA != value) {
-      Vibration.vibrate(duration : 25);
+      Vibration.vibrate(duration : 15);
+    } else {
+      return;
     }
     if (mounted) {
       setState(() {
