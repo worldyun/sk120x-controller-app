@@ -6,6 +6,9 @@ import 'package:animated_toggle_switch/animated_toggle_switch.dart';
 import 'package:sk120x_controller_app/ble.dart';
 import 'package:sk120x_controller_app/models/sk_device.dart';
 import 'package:sk120x_controller_app/utils/event_bus.dart';
+import 'package:vibration/vibration.dart';
+import 'package:vibration/vibration_presets.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -33,7 +36,7 @@ class PowerSupplyApp extends StatefulWidget {
 class _PowerSupplyAppState extends State<PowerSupplyApp> {
   double setVoltage = 0.0;
   double setCurrent = 0.0;
-  double currentVoltage = 24.02;
+  double currentVoltage = 3.3;
   double currentCurrent = 0.0;
   double currentPower = 0.0;
   int totalEnergymWh = 0;
@@ -50,6 +53,8 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   bool isFirstTimeV = true;
   bool isFirstTimeA = true;
   bool devicePowerOn = false;
+  // 间隔时间
+  int interval = 1500;
 
   late StreamSubscription<BleEvent> bleEvent;
 
@@ -72,6 +77,22 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   late BuildContext buildContext;
 
   void valueChangedListenerV(double value) {
+    if (isFirstTimeV) {
+      isFirstTimeV = false;
+      return;
+    }
+    isUpdating = true;
+    if (setVoltage != value) {
+      value = (value * 10).roundToDouble() / 10;
+      interval = 1500;
+    } else {
+      interval = 100;
+    }
+    if (newSetV != value) {
+      Vibration.vibrate(duration : 15);
+    } else {
+      return;
+    }
     if (mounted) {
       setState(() {
         setVoltage = value;
@@ -82,6 +103,22 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   }
 
   void valueChangedListenerA(double value) {
+    if (isFirstTimeA) {
+      isFirstTimeA = false;
+      return;
+    }
+    isUpdating = true;
+    if (setCurrent != value) {
+      value = (value * 20).roundToDouble() / 20;
+      interval = 1500;
+    } else {
+      interval = 100;
+    }
+    if (newSetA != value) {
+      Vibration.vibrate(duration : 15);
+    } else {
+      return;
+    }
     if (mounted) {
       setState(() {
         setCurrent = value;
@@ -91,35 +128,36 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
     }
   }
 
-  //消除抖动更新电压与电流 两次更新之间的间隔不得小于500ms
+  //消除抖动更新电压与电流 两次更新之间的间隔不得小于interval ms
   void knobUpdateVale(String type) async {
     if (knodUpdateTimer != null) {
-      return;
-    } else {
-      isUpdating = true;
-      knodUpdateTimer = Timer(const Duration(milliseconds: 500), () async {
-        try {
-          if (type == "V") {
-            if (isFirstTimeV) {
-              isFirstTimeV = false;
-              return;
-            }
-            int newSetVInt = (newSetV * 100.0).truncate();
-            await ble.setConfigValue("vSet", newSetVInt);
-          } else if (type == "A") {
-            if (isFirstTimeA) {
-              isFirstTimeA = false;
-              return;
-            }
-            int newSetAInt = (newSetA * 1000.0).truncate();
-            await ble.setConfigValue("iSet", newSetAInt);
-          }
-        } finally {
-          knodUpdateTimer = null;
-          isUpdating = false;
+      // 如果定时器已存在，取消之前的定时器
+      knodUpdateTimer!.cancel();
+      knodUpdateTimer = null;
+    } 
+    knodUpdateTimer = Timer(Duration(milliseconds: interval), () async {
+      bool isSuccess = false;
+      try {
+        if (type == "V") {
+          int newSetVInt = (newSetV * 100.0).truncate();
+          isSuccess = await ble.setConfigValue("vSet", newSetVInt);
+        } else if (type == "A") {
+          int newSetAInt = (newSetA * 1000.0).truncate();
+          isSuccess = await ble.setConfigValue("iSet", newSetAInt);
         }
-      });
-    }
+      } finally {
+        if (isSuccess) {
+          Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+        } else {
+          Vibration.vibrate(duration : 300);
+        }
+        knodUpdateTimer = null;
+        // 设置 isUpdating 为 false，表示更新已完成
+        Timer(const Duration(milliseconds: 250), () async {
+          isUpdating = false;
+        });
+      }
+    });
   }
 
   void listViewOnTap(int index) {
@@ -160,7 +198,8 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       minimum: _minimumV,
       maximum: _maximumV,
       startAngle: 0,
-      endAngle: 360,
+      endAngle: 315,
+      precision: 3,
     );
     _controllerV.addOnValueChangedListener(valueChangedListenerV);
 
@@ -169,7 +208,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       minimum: _minimumA,
       maximum: _maximumA,
       startAngle: 0,
-      endAngle: 360,
+      endAngle: 315,
       precision: 3,
     );
     _controllerA.addOnValueChangedListener(valueChangedListenerA);
@@ -178,11 +217,13 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       buildContext = context;
       ble.init(context);
     });
+
+    WakelockPlus.enable();
   }
 
   void powerSwitch(bool value) {
-    powerOn = value;
-    if (powerOn) {
+    // powerOn = value;
+    if (value) {
       ble.setConfigValue("outEnable", 1);
     } else {
       ble.setConfigValue("outEnable", 0);
@@ -216,6 +257,8 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
           }
         });
         _parseData();
+        isFirstTimeA = true;
+        isFirstTimeV = true;
         _controllerA.setCurrentValue(skDevice.iSet / 1000.0);
         _controllerV.setCurrentValue(skDevice.vSet / 100.0);
       }
@@ -228,6 +271,9 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   }
 
   void _parseData() {
+    if (powerOn != (skDevice.outEnable == 1)) {
+      Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+    }
     setState(() {
       currentVoltage = skDevice.vOut / 100.0;
       currentCurrent = skDevice.iOut / 1000.0;
@@ -236,8 +282,16 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       totalmAh = skDevice.ahOut;
       powerOn = skDevice.outEnable == 1;
       if (!isUpdating) {
-        setVoltage = skDevice.vSet / 100.0;
-        setCurrent = skDevice.iSet / 1000.0;
+        if (setVoltage != skDevice.vSet / 100.0) {
+          isFirstTimeV = true;
+          setVoltage = skDevice.vSet / 100.0;
+          _controllerV.setCurrentValue(setVoltage);
+        }
+        if (setCurrent != skDevice.iSet / 1000.0) {
+          isFirstTimeA = true;
+          setCurrent = skDevice.iSet / 1000.0;
+          _controllerA.setCurrentValue(setCurrent);
+        }
       }
     });
   }
@@ -279,7 +333,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('输入值超出范围！'),
-                        duration: Duration(seconds: 2),
+                        duration: Duration(seconds: 3),
                       ),
                     );
                     return;
@@ -376,6 +430,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                         ? totalmAh.toString().padLeft(3, '0')
                         : totalEnergymWh.toString().padLeft(3, '0'),
                     isViveTotalmAh ? 'mAh' : 'mWh', () {
+                  Vibration.vibrate(duration : 25);
                   setState(() {
                     isViveTotalmAh = !isViveTotalmAh;
                   });
@@ -448,6 +503,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                         ? totalmAh.toString().padLeft(3, '0')
                         : totalEnergymWh.toString().padLeft(3, '0'),
                     isViveTotalmAh ? 'mAh' : 'mWh', () {
+                  Vibration.vibrate(duration : 25);
                   setState(() {
                     isViveTotalmAh = !isViveTotalmAh;
                   });
@@ -470,7 +526,22 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                       width: 100,
                       height: 100,
                       style: KnobStyle(
+                        labelOffset: 3.0,
                         labelStyle: Theme.of(context).textTheme.bodySmall,
+                        majorTickStyle: const MajorTickStyle(
+                          length: 5,
+                        ),
+                        pointerStyle: const PointerStyle(
+                          color: Colors.green,
+                          offset : 10.0,
+                        ),
+                        showMinorTickLabels: false,
+                        minorTicksPerInterval: 4,
+                        controlStyle: const ControlStyle(
+                          backgroundColor: Colors.white,
+                          shadowColor: Colors.green,
+                          glowColor: Colors.green,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 50),
@@ -479,7 +550,21 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                       width: 100,
                       height: 100,
                       style: KnobStyle(
+                        labelOffset: 3.0,
                         labelStyle: Theme.of(context).textTheme.bodySmall,
+                        majorTickStyle: const MajorTickStyle(
+                          length: 5,
+                        ),
+                        pointerStyle: const PointerStyle(
+                          color: Color.fromARGB(255, 255, 187, 0),
+                          offset: 10.0,
+                        ),
+                        showMinorTickLabels: true,
+                        controlStyle: const ControlStyle(
+                          backgroundColor: Colors.white,
+                          shadowColor: Color.fromARGB(255, 255, 187, 0),
+                          glowColor: Color.fromARGB(255, 255, 187, 0),
+                        ),
                       ),
                     ),
                   ],

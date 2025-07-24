@@ -179,6 +179,10 @@ class SkDevice {
     vIn = _parseUint16(bytes, 10);
     ahOutLow = _parseUint16(bytes, 12);
     ahOutHigh = _parseUint16(bytes, 14);
+    // 从ahOutHigh的首位提取输出使能 1为开启，0为关闭
+    outEnable = (ahOutHigh & 0x8000) >> 15;
+    // 将ahOutHigh的高位清零
+    ahOutHigh &= 0x7FFF;
     whOutLow = _parseUint16(bytes, 16);
     whOutHigh = _parseUint16(bytes, 18);
     ahOut = ahOutLow + (ahOutHigh << 16);
