@@ -58,13 +58,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
 
   late StreamSubscription<BleEvent> bleEvent;
 
-  List<String> options = [
-    '设置电压',
-    '设置电流',
-    '查看日志',
-    '系统设置',
-    '关于',
-  ];
+  List<String> options = ['设置电压', '设置电流', '查看日志', '系统设置', '关于'];
 
   final double _minimumV = 0;
   final double _maximumV = 36;
@@ -89,7 +83,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       interval = 100;
     }
     if (newSetV != value) {
-      Vibration.vibrate(duration : 15);
+      Vibration.vibrate(duration: 15);
     } else {
       return;
     }
@@ -115,7 +109,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       interval = 100;
     }
     if (newSetA != value) {
-      Vibration.vibrate(duration : 15);
+      Vibration.vibrate(duration: 15);
     } else {
       return;
     }
@@ -134,7 +128,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       // 如果定时器已存在，取消之前的定时器
       knodUpdateTimer!.cancel();
       knodUpdateTimer = null;
-    } 
+    }
     knodUpdateTimer = Timer(Duration(milliseconds: interval), () async {
       bool isSuccess = false;
       try {
@@ -149,7 +143,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
         if (isSuccess) {
           Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
         } else {
-          Vibration.vibrate(duration : 300);
+          Vibration.vibrate(duration: 300);
         }
         knodUpdateTimer = null;
         // 设置 isUpdating 为 false，表示更新已完成
@@ -298,7 +292,10 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
 
   // 新增方法：显示设置对话框
   void _showSettingDialog(
-      BuildContext context, String title, Function(double) onConfirm) {
+    BuildContext context,
+    String title,
+    Function(double) onConfirm,
+  ) {
     TextEditingController controller = TextEditingController();
     showDialog(
       context: context,
@@ -368,12 +365,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                     : _buildLandscapeLayout();
               },
             )
-          : Center(
-              child: Text(
-                text,
-                style: const TextStyle(fontSize: 24.0),
-              ),
-            ),
+          : Center(child: Text(text, style: const TextStyle(fontSize: 24.0))),
     );
   }
 
@@ -404,45 +396,58 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
               mainAxisSpacing: 8.0,
               childAspectRatio: 1.5, // 修改卡片的宽高比
               children: [
-                _buildCombinedInfoCard('电压', setVoltage.toStringAsFixed(2),
-                    currentVoltage.toStringAsFixed(2), 'V', () {
-                  _showSettingDialog(context, '设置电压', (value) {
-                    setState(() {
-                      setVoltage = value;
-                      _controllerV.setCurrentValue(value);
+                _buildCombinedInfoCard(
+                  '电压',
+                  setVoltage.toStringAsFixed(2),
+                  currentVoltage.toStringAsFixed(2),
+                  'V',
+                  () {
+                    _showSettingDialog(context, '设置电压', (value) {
+                      setState(() {
+                        setVoltage = value;
+                        _controllerV.setCurrentValue(value);
+                      });
                     });
-                  });
-                }),
-                _buildCombinedInfoCard('电流', setCurrent.toStringAsFixed(3),
-                    currentCurrent.toStringAsFixed(3), 'A', () {
-                  _showSettingDialog(context, '设置电流', (value) {
-                    setState(() {
-                      setCurrent = value;
-                      _controllerA.setCurrentValue(value);
+                  },
+                ),
+                _buildCombinedInfoCard(
+                  '电流',
+                  setCurrent.toStringAsFixed(3),
+                  currentCurrent.toStringAsFixed(3),
+                  'A',
+                  () {
+                    _showSettingDialog(context, '设置电流', (value) {
+                      setState(() {
+                        setCurrent = value;
+                        _controllerA.setCurrentValue(value);
+                      });
                     });
-                  });
-                }),
+                  },
+                ),
                 _buildInfoCard(
-                    '功率', currentPower.toStringAsFixed(3), 'W', () {}),
+                  '功率',
+                  currentPower.toStringAsFixed(3),
+                  'W',
+                  () {},
+                ),
                 _buildInfoCard(
-                    '电量',
-                    isViveTotalmAh
-                        ? totalmAh.toString().padLeft(3, '0')
-                        : totalEnergymWh.toString().padLeft(3, '0'),
-                    isViveTotalmAh ? 'mAh' : 'mWh', () {
-                  Vibration.vibrate(duration : 25);
-                  setState(() {
-                    isViveTotalmAh = !isViveTotalmAh;
-                  });
-                }),
+                  '电量',
+                  isViveTotalmAh
+                      ? totalmAh.toString().padLeft(3, '0')
+                      : totalEnergymWh.toString().padLeft(3, '0'),
+                  isViveTotalmAh ? 'mAh' : 'mWh',
+                  () {
+                    Vibration.vibrate(duration: 25);
+                    setState(() {
+                      isViveTotalmAh = !isViveTotalmAh;
+                    });
+                  },
+                ),
               ],
             ),
           ),
         ),
-        Expanded(
-          flex: 1,
-          child: _getStwitch(),
-        ),
+        Expanded(flex: 1, child: _getStwitch()),
         Expanded(
           flex: 7,
           child: ListView.builder(
@@ -477,37 +482,53 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
               mainAxisSpacing: 8.0,
               childAspectRatio: 1.5, // 修改卡片的宽高比
               children: [
-                _buildCombinedInfoCard('电压', setVoltage.toStringAsFixed(2),
-                    currentVoltage.toStringAsFixed(2), 'V', () {
-                  // _showSettingDialog(context, '设置电压', (value) {
-                  //   setState(() {
-                  //     setVoltage = value;
-                  //     _controllerV.setCurrentValue(value);
-                  //   });
-                  // });
-                }),
-                _buildCombinedInfoCard('电流', setCurrent.toStringAsFixed(3),
-                    currentCurrent.toStringAsFixed(3), 'A', () {
-                  // _showSettingDialog(context, '设置电流', (value) {
-                  //   setState(() {
-                  //     setCurrent = value;
-                  //     _controllerA.setCurrentValue(value);
-                  //   });
-                  // });
-                }),
+                _buildCombinedInfoCard(
+                  '电压',
+                  setVoltage.toStringAsFixed(2),
+                  currentVoltage.toStringAsFixed(2),
+                  'V',
+                  () {
+                    // _showSettingDialog(context, '设置电压', (value) {
+                    //   setState(() {
+                    //     setVoltage = value;
+                    //     _controllerV.setCurrentValue(value);
+                    //   });
+                    // });
+                  },
+                ),
+                _buildCombinedInfoCard(
+                  '电流',
+                  setCurrent.toStringAsFixed(3),
+                  currentCurrent.toStringAsFixed(3),
+                  'A',
+                  () {
+                    // _showSettingDialog(context, '设置电流', (value) {
+                    //   setState(() {
+                    //     setCurrent = value;
+                    //     _controllerA.setCurrentValue(value);
+                    //   });
+                    // });
+                  },
+                ),
                 _buildInfoCard(
-                    '功率', currentPower.toStringAsFixed(3), 'W', () {}),
+                  '功率',
+                  currentPower.toStringAsFixed(3),
+                  'W',
+                  () {},
+                ),
                 _buildInfoCard(
-                    '电量',
-                    isViveTotalmAh
-                        ? totalmAh.toString().padLeft(3, '0')
-                        : totalEnergymWh.toString().padLeft(3, '0'),
-                    isViveTotalmAh ? 'mAh' : 'mWh', () {
-                  Vibration.vibrate(duration : 25);
-                  setState(() {
-                    isViveTotalmAh = !isViveTotalmAh;
-                  });
-                }),
+                  '电量',
+                  isViveTotalmAh
+                      ? totalmAh.toString().padLeft(3, '0')
+                      : totalEnergymWh.toString().padLeft(3, '0'),
+                  isViveTotalmAh ? 'mAh' : 'mWh',
+                  () {
+                    Vibration.vibrate(duration: 25);
+                    setState(() {
+                      isViveTotalmAh = !isViveTotalmAh;
+                    });
+                  },
+                ),
               ],
             ),
           ),
@@ -528,12 +549,10 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                       style: KnobStyle(
                         labelOffset: 3.0,
                         labelStyle: Theme.of(context).textTheme.bodySmall,
-                        majorTickStyle: const MajorTickStyle(
-                          length: 5,
-                        ),
+                        majorTickStyle: const MajorTickStyle(length: 5),
                         pointerStyle: const PointerStyle(
                           color: Colors.green,
-                          offset : 10.0,
+                          offset: 10.0,
                         ),
                         showMinorTickLabels: false,
                         minorTicksPerInterval: 4,
@@ -552,9 +571,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                       style: KnobStyle(
                         labelOffset: 3.0,
                         labelStyle: Theme.of(context).textTheme.bodySmall,
-                        majorTickStyle: const MajorTickStyle(
-                          length: 5,
-                        ),
+                        majorTickStyle: const MajorTickStyle(length: 5),
                         pointerStyle: const PointerStyle(
                           color: Color.fromARGB(255, 255, 187, 0),
                           offset: 10.0,
@@ -573,24 +590,16 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      '电压',
-                      style: TextStyle(fontSize: 16.0),
-                    ),
+                    Text('电压', style: TextStyle(fontSize: 16.0)),
                     SizedBox(width: 120),
-                    Text(
-                      '电流',
-                      style: TextStyle(fontSize: 16.0),
-                    ),
+                    Text('电流', style: TextStyle(fontSize: 16.0)),
                   ],
                 ),
                 const SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _getStwitch(),
-                  ],
-                )
+                  children: [_getStwitch()],
+                ),
               ],
             ),
           ),
@@ -623,7 +632,9 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
         backgroundColor: b ? Colors.green : Colors.black12,
         indicatorColor: b ? Colors.blue : Colors.red,
         borderRadius: const BorderRadius.horizontal(
-            left: Radius.circular(4.0), right: Radius.circular(50.0)),
+          left: Radius.circular(4.0),
+          right: Radius.circular(50.0),
+        ),
         indicatorBorderRadius: BorderRadius.circular(b ? 50.0 : 4.0),
       ),
       iconBuilder: (value) => Icon(
@@ -633,63 +644,25 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       ),
       textBuilder: (value) => value
           ? const Center(
-              child: Text('输出已开启', style: TextStyle(color: Colors.black)))
+              child: Text('输出已开启', style: TextStyle(color: Colors.black)),
+            )
           : const Center(
-              child: Text('输出已关闭', style: TextStyle(color: Colors.black))),
+              child: Text('输出已关闭', style: TextStyle(color: Colors.black)),
+            ),
     );
   }
 
   Widget _buildInfoCard(
-      String title, String value, String unit, VoidCallback onTap) {
-    return GestureDetector(
-        onTap: onTap,
-        child: Card(
-          elevation: 4.0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8.0),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                      fontSize: 14.0, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4.0),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      value,
-                      style: const TextStyle(
-                          fontSize: 24.0, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 4.0),
-                    Text(
-                      unit,
-                      style: const TextStyle(
-                          fontSize: 12.0, fontWeight: FontWeight.normal),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ));
-  }
-
-  Widget _buildCombinedInfoCard(String title, String setValue,
-      String currentValue, String unit, VoidCallback onTap) {
+    String title,
+    String value,
+    String unit,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Card(
         elevation: 4.0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(
@@ -698,7 +671,61 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
               Text(
                 title,
                 style: const TextStyle(
-                    fontSize: 14.0, fontWeight: FontWeight.bold),
+                  fontSize: 14.0,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4.0),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 24.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4.0),
+                  Text(
+                    unit,
+                    style: const TextStyle(
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCombinedInfoCard(
+    String title,
+    String setValue,
+    String currentValue,
+    String unit,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        elevation: 4.0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14.0,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4.0),
               Row(
@@ -707,13 +734,17 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                   Text(
                     setValue,
                     style: const TextStyle(
-                        fontSize: 12.0, fontWeight: FontWeight.normal),
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.normal,
+                    ),
                   ),
                   const SizedBox(width: 4.0),
                   Text(
                     unit,
                     style: const TextStyle(
-                        fontSize: 12.0, fontWeight: FontWeight.normal),
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.normal,
+                    ),
                   ),
                 ],
               ),
@@ -724,13 +755,17 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                   Text(
                     currentValue,
                     style: const TextStyle(
-                        fontSize: 24.0, fontWeight: FontWeight.bold),
+                      fontSize: 24.0,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(width: 4.0),
                   Text(
                     unit,
                     style: const TextStyle(
-                        fontSize: 12.0, fontWeight: FontWeight.normal),
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.normal,
+                    ),
                   ),
                 ],
               ),

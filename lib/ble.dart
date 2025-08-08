@@ -53,52 +53,55 @@ class Ble {
     connectedDevice = null;
     isConnected = false;
     eventBus.fire(BleEvent("scanStart"));
-    FlutterBluePlus.onScanResults.listen(
-      (results) async {
-        devicesList.clear();
-        if (results.isNotEmpty) {
-          for (var element in results) {
-            if (element.device.advName.startsWith("SK120X")) {
-              devicesList.add(element.device);
-            }
-          }
-          if (devicesList.isEmpty) {
-            MyToast.showToast(context, "未发现设备, 将持续扫描");
-          } else {
-            await FlutterBluePlus.stopScan();
-            isScanning = false;
-            connectDevice();
+    FlutterBluePlus.onScanResults.listen((results) async {
+      devicesList.clear();
+      if (results.isNotEmpty) {
+        for (var element in results) {
+          if (element.device.advName.startsWith("SK120X")) {
+            devicesList.add(element.device);
           }
         }
-      },
-      onError: (e) => log(e),
-    );
+        if (devicesList.isEmpty) {
+          MyToast.showToast(context, "未发现设备, 将持续扫描");
+        } else {
+          await FlutterBluePlus.stopScan();
+          isScanning = false;
+          connectDevice();
+        }
+      }
+    }, onError: (e) => log(e));
 
     FlutterBluePlus.adapterState
         .where((val) => val == BluetoothAdapterState.on)
         .first;
 
     FlutterBluePlus.startScan(
-        withKeywords: ["SK120X"], continuousUpdates: true);
+      withKeywords: ["SK120X"],
+      continuousUpdates: true,
+    );
   }
 
   void connectDevice() async {
     var device = devicesList[0];
     connectedDevice = device;
-    MyToast.showToast(context, "连接设备 ${device.advName}");
+    MyToast.showToast(context, "正在连接设备 ${device.advName}");
     // listen for disconnection
-    var subscription =
-        device.connectionState.listen((BluetoothConnectionState state) async {
+    var subscription = device.connectionState.listen((
+      BluetoothConnectionState state,
+    ) async {
       if (state == BluetoothConnectionState.disconnected) {
+        if (isConnected) {
+          MyToast.showToast(context, "连接已断开 ${device.advName}");
+        }
         isConnected = false;
         connectedDevice = null;
         eventBus.fire(BleEvent("disconnected"));
-        MyToast.showToast(context, "连接已断开 ${device.advName}");
         //定时3秒后重新扫描
         await Future.delayed(const Duration(seconds: 3));
         initScan();
       } else if (state == BluetoothConnectionState.connected) {
         MyToast.showToast(context, "设备已连接 ${device.advName}");
+        await FlutterBluePlus.stopScan();
         isConnected = true;
         eventBus.fire(BleEvent("connected"));
         if (!kIsWeb && Platform.isAndroid) {
@@ -168,7 +171,9 @@ class Ble {
     int regNunber = offset ~/ 2;
 
     // 失败后重试一次
-    return (await writeRegister(regNunber, value)) ? true : (await writeRegister(regNunber, value));
+    return (await writeRegister(regNunber, value))
+        ? true
+        : (await writeRegister(regNunber, value));
   }
 
   Future<bool> writeRegister(int regNumber, int regData) async {
@@ -182,7 +187,7 @@ class Ble {
       regNumberLow,
       regNumberHigh,
       regDataLow,
-      regDataHigh
+      regDataHigh,
     ];
     await setConfigCharacteristic.write(bytes);
     var readDate = await setConfigCharacteristic.read();
