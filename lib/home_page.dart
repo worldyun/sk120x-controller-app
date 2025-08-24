@@ -147,7 +147,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
         }
         knodUpdateTimer = null;
         // 设置 isUpdating 为 false，表示更新已完成
-        Timer(const Duration(milliseconds: 250), () async {
+        Timer(const Duration(milliseconds: 300), () async {
           isUpdating = false;
         });
       }
@@ -215,13 +215,18 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
     WakelockPlus.enable();
   }
 
-  void powerSwitch(bool value) {
+  Future<void> powerSwitch(bool value) async {
     // powerOn = value;
-    if (value) {
-      ble.setConfigValue("outEnable", 1);
+    isUpdating = true;
+    bool isSuccess = await ble.setConfigValue("outEnable", value ? 1 : 0);
+    if (isSuccess) {
+      Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
     } else {
-      ble.setConfigValue("outEnable", 0);
+      Vibration.vibrate(duration: 300);
     }
+    Timer(const Duration(milliseconds: 300), () async {
+      isUpdating = false;
+    });
   }
 
   void initEvent() {
@@ -265,7 +270,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   }
 
   void _parseData() {
-    if (powerOn != (skDevice.outEnable == 1)) {
+    if (powerOn != (skDevice.outEnable == 1) && !isUpdating) {
       Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
     }
     setState(() {
