@@ -45,8 +45,9 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk sk120x_controller_app.apk
       
       # 上传构建产物
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
+      - name: Upload  artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
         with:
-          name: app-release.apk
+          name: sk120x_controller_app.apk
           path: sk120x_controller_app.apk
