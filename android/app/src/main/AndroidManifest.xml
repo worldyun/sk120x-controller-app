@@ -17,7 +17,7 @@
     <!-- legacy for Android 9 or lower -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28" />
     <application
-        android:label="sk120x_controller_app"
+        android:label="SK120X"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

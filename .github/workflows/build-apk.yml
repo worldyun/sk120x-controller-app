@@ -1,0 +1,53 @@
+# .github/workflows/build-apk.yml
+name: Build Flutter APK
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      # 设置Java环境
+      - name: Set up JDK 22
+        uses: actions/setup-java@v3
+        with:
+          java-version: '22'
+          distribution: 'temurin'
+      
+      # 设置Flutter环境
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.7' # 可根据项目需求调整版本
+          channel: 'stable'
+      
+      # 获取Flutter依赖
+      - name: Install dependencies
+        run: flutter pub get
+      
+      # 构建APK
+      - name: Build APK
+        run: |
+          flutter build apk \
+            --target-platform android-arm64 \
+            --obfuscate \
+            --split-debug-info=./split_debug_info \
+            --release
+          cp build/app/outputs/flutter-apk/app-release.apk sk120x-controller-app.apk
+      
+      # 上传构建产物
+      - name: Upload  artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sk120x-controller-app
+          path: sk120x-controller-app.apk
