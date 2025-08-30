@@ -57,7 +57,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   bool devicePowerOn = false;
   bool isViewInputVoltage = false;
   bool isViewmA = false;
-  bool isLandscape = false;
   bool isViewTotalmAh = false;
   // 间隔时间
   int interval = 1500;
@@ -191,8 +190,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ]);
-        isLandscape = true;
-        saveParameters();
         break;
       case 3:
         // 系统设置
@@ -239,7 +236,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   Future<void> saveParameters() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isViewTotalmAh', isViewTotalmAh);
-    await prefs.setBool('isLandscape', isLandscape);
     await prefs.setBool('isViewInputVoltage', isViewInputVoltage);
     await prefs.setBool('isViewmA', isViewmA);
   }
@@ -250,7 +246,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
 
     setState(() {
       isViewTotalmAh = prefs.getBool('isViewTotalmAh') ?? false;
-      isLandscape = prefs.getBool('setCurrent') ?? false;
       isViewInputVoltage = prefs.getBool('isViewInputVoltage') ?? false;
       isViewmA = prefs.getBool('isViewmA') ?? false;
     });
@@ -407,7 +402,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       body: isDeviceInit && devicePowerOn
           ? OrientationBuilder(
               builder: (context, orientation) {
-                return orientation == Orientation.portrait && !isLandscape
+                return orientation == Orientation.portrait
                     ? _buildPortraitLayout()
                     : _buildLandscapeLayout();
               },
