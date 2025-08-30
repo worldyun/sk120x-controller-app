@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:knob_widget/knob_widget.dart';
 import 'package:animated_toggle_switch/animated_toggle_switch.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sk120x_controller_app/ble.dart';
 import 'package:sk120x_controller_app/models/sk_device.dart';
 import 'package:sk120x_controller_app/utils/event_bus.dart';
@@ -36,6 +38,7 @@ class PowerSupplyApp extends StatefulWidget {
 class _PowerSupplyAppState extends State<PowerSupplyApp> {
   double setVoltage = 0.0;
   double setCurrent = 0.0;
+  double inputVoltage = 0.0;
   double currentVoltage = 3.3;
   double currentCurrent = 0.0;
   double currentPower = 0.0;
@@ -45,7 +48,6 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   bool isDeviceInit = false;
   Ble ble = Ble();
   late SkDevice skDevice;
-  bool isViveTotalmAh = false;
   bool isUpdating = false;
   Timer? knodUpdateTimer;
   double newSetV = 0.0;
@@ -53,12 +55,22 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
   bool isFirstTimeV = true;
   bool isFirstTimeA = true;
   bool devicePowerOn = false;
+  bool isViewInputVoltage = false;
+  bool isViewmA = false;
+  bool isLandscape = false;
+  bool isViewTotalmAh = false;
   // 间隔时间
   int interval = 1500;
 
   late StreamSubscription<BleEvent> bleEvent;
 
-  List<String> options = ['设置电压', '设置电流', '查看日志', '系统设置', '关于'];
+  List<String> options = [
+    '设置电压',
+    '设置电流',
+    '横屏模式',
+    // '系统设置',
+    // '关于'
+  ];
 
   final double _minimumV = 0;
   final double _maximumV = 36;
@@ -173,7 +185,14 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
         });
         break;
       case 2:
-        // 查看日志
+        // 切换横屏
+        // 设置为横屏模式
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+        isLandscape = true;
+        saveParameters();
         break;
       case 3:
         // 系统设置
@@ -210,9 +229,31 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       buildContext = context;
       ble.init(context);
+      loadSavedParameters();
     });
 
     WakelockPlus.enable();
+  }
+
+  // 保存参数到SharedPreferences
+  Future<void> saveParameters() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isViewTotalmAh', isViewTotalmAh);
+    await prefs.setBool('isLandscape', isLandscape);
+    await prefs.setBool('isViewInputVoltage', isViewInputVoltage);
+    await prefs.setBool('isViewmA', isViewmA);
+  }
+
+  // 从SharedPreferences加载参数
+  Future<void> loadSavedParameters() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      isViewTotalmAh = prefs.getBool('isViewTotalmAh') ?? false;
+      isLandscape = prefs.getBool('setCurrent') ?? false;
+      isViewInputVoltage = prefs.getBool('isViewInputVoltage') ?? false;
+      isViewmA = prefs.getBool('isViewmA') ?? false;
+    });
   }
 
   Future<void> powerSwitch(bool value) async {
@@ -275,6 +316,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
     }
     setState(() {
       currentVoltage = skDevice.vOut / 100.0;
+      inputVoltage = skDevice.vIn / 100.0;
       currentCurrent = skDevice.iOut / 1000.0;
       currentPower = skDevice.wOut / 100.0;
       totalEnergymWh = skDevice.whOut;
@@ -365,7 +407,7 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       body: isDeviceInit && devicePowerOn
           ? OrientationBuilder(
               builder: (context, orientation) {
-                return orientation == Orientation.portrait
+                return orientation == Orientation.portrait && !isLandscape
                     ? _buildPortraitLayout()
                     : _buildLandscapeLayout();
               },
@@ -402,30 +444,34 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
               childAspectRatio: 1.5, // 修改卡片的宽高比
               children: [
                 _buildCombinedInfoCard(
-                  '电压',
+                  isViewInputVoltage ? '输入电压' : '电压',
                   setVoltage.toStringAsFixed(2),
-                  currentVoltage.toStringAsFixed(2),
+                  isViewInputVoltage
+                      ? inputVoltage.toStringAsFixed(2)
+                      : currentVoltage.toStringAsFixed(2),
                   'V',
                   () {
-                    _showSettingDialog(context, '设置电压', (value) {
-                      setState(() {
-                        setVoltage = value;
-                        _controllerV.setCurrentValue(value);
-                      });
+                    Vibration.vibrate(duration: 25);
+                    setState(() {
+                      isViewInputVoltage = !isViewInputVoltage;
+                      saveParameters();
                     });
                   },
                 ),
                 _buildCombinedInfoCard(
                   '电流',
-                  setCurrent.toStringAsFixed(3),
-                  currentCurrent.toStringAsFixed(3),
-                  'A',
+                  isViewmA
+                      ? (setCurrent * 1000).toStringAsFixed(0)
+                      : setCurrent.toStringAsFixed(3),
+                  isViewmA
+                      ? (currentCurrent * 1000).toStringAsFixed(0)
+                      : currentCurrent.toStringAsFixed(3),
+                  isViewmA ? 'mA' : 'A',
                   () {
-                    _showSettingDialog(context, '设置电流', (value) {
-                      setState(() {
-                        setCurrent = value;
-                        _controllerA.setCurrentValue(value);
-                      });
+                    Vibration.vibrate(duration: 25);
+                    setState(() {
+                      isViewmA = !isViewmA;
+                      saveParameters();
                     });
                   },
                 ),
@@ -437,14 +483,15 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                 ),
                 _buildInfoCard(
                   '电量',
-                  isViveTotalmAh
+                  isViewTotalmAh
                       ? totalmAh.toString().padLeft(3, '0')
                       : totalEnergymWh.toString().padLeft(3, '0'),
-                  isViveTotalmAh ? 'mAh' : 'mWh',
+                  isViewTotalmAh ? 'mAh' : 'mWh',
                   () {
                     Vibration.vibrate(duration: 25);
                     setState(() {
-                      isViveTotalmAh = !isViveTotalmAh;
+                      isViewTotalmAh = !isViewTotalmAh;
+                      saveParameters();
                     });
                   },
                 ),
@@ -479,40 +526,45 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
       children: [
         Expanded(
           flex: 3,
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
+          child: Center(
             child: GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 8.0,
               mainAxisSpacing: 8.0,
               childAspectRatio: 1.5, // 修改卡片的宽高比
+              shrinkWrap: true,
+              padding: EdgeInsets.all(10),
               children: [
                 _buildCombinedInfoCard(
-                  '电压',
+                  isViewInputVoltage ? '输入电压' : '电压',
                   setVoltage.toStringAsFixed(2),
-                  currentVoltage.toStringAsFixed(2),
+                  isViewInputVoltage
+                      ? inputVoltage.toStringAsFixed(2)
+                      : currentVoltage.toStringAsFixed(2),
                   'V',
                   () {
-                    // _showSettingDialog(context, '设置电压', (value) {
-                    //   setState(() {
-                    //     setVoltage = value;
-                    //     _controllerV.setCurrentValue(value);
-                    //   });
-                    // });
+                    Vibration.vibrate(duration: 25);
+                    setState(() {
+                      isViewInputVoltage = !isViewInputVoltage;
+                      saveParameters();
+                    });
                   },
                 ),
                 _buildCombinedInfoCard(
                   '电流',
-                  setCurrent.toStringAsFixed(3),
-                  currentCurrent.toStringAsFixed(3),
-                  'A',
+                  isViewmA
+                      ? (setCurrent * 1000).toStringAsFixed(0)
+                      : setCurrent.toStringAsFixed(3),
+                  isViewmA
+                      ? (currentCurrent * 1000).toStringAsFixed(0)
+                      : currentCurrent.toStringAsFixed(3),
+                  isViewmA ? 'mA' : 'A',
                   () {
-                    // _showSettingDialog(context, '设置电流', (value) {
-                    //   setState(() {
-                    //     setCurrent = value;
-                    //     _controllerA.setCurrentValue(value);
-                    //   });
-                    // });
+                    Vibration.vibrate(duration: 25);
+                    setState(() {
+                      isViewmA = !isViewmA;
+                      saveParameters();
+                    });
                   },
                 ),
                 _buildInfoCard(
@@ -523,14 +575,15 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
                 ),
                 _buildInfoCard(
                   '电量',
-                  isViveTotalmAh
+                  isViewTotalmAh
                       ? totalmAh.toString().padLeft(3, '0')
                       : totalEnergymWh.toString().padLeft(3, '0'),
-                  isViveTotalmAh ? 'mAh' : 'mWh',
+                  isViewTotalmAh ? 'mAh' : 'mWh',
                   () {
                     Vibration.vibrate(duration: 25);
                     setState(() {
-                      isViveTotalmAh = !isViveTotalmAh;
+                      isViewTotalmAh = !isViewTotalmAh;
+                      saveParameters();
                     });
                   },
                 ),
@@ -545,62 +598,132 @@ class _PowerSupplyAppState extends State<PowerSupplyApp> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Knob(
-                      controller: _controllerV,
-                      width: 100,
-                      height: 100,
-                      style: KnobStyle(
-                        labelOffset: 3.0,
-                        labelStyle: Theme.of(context).textTheme.bodySmall,
-                        majorTickStyle: const MajorTickStyle(length: 5),
-                        pointerStyle: const PointerStyle(
-                          color: Colors.green,
-                          offset: 10.0,
-                        ),
-                        showMinorTickLabels: false,
-                        minorTicksPerInterval: 4,
-                        controlStyle: const ControlStyle(
-                          backgroundColor: Colors.white,
-                          shadowColor: Colors.green,
-                          glowColor: Colors.green,
-                        ),
+                    Expanded(flex: 1, child: Text("")),
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text(
+                            'SK120X',
+                            style: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 24.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 50),
-                    Knob(
-                      controller: _controllerA,
-                      width: 100,
-                      height: 100,
-                      style: KnobStyle(
-                        labelOffset: 3.0,
-                        labelStyle: Theme.of(context).textTheme.bodySmall,
-                        majorTickStyle: const MajorTickStyle(length: 5),
-                        pointerStyle: const PointerStyle(
-                          color: Color.fromARGB(255, 255, 187, 0),
-                          offset: 10.0,
-                        ),
-                        showMinorTickLabels: true,
-                        controlStyle: const ControlStyle(
-                          backgroundColor: Colors.white,
-                          shadowColor: Color.fromARGB(255, 255, 187, 0),
-                          glowColor: Color.fromARGB(255, 255, 187, 0),
+                    Expanded(
+                      flex: 1,
+                      child: TextButton(
+                        onPressed: () {
+                          SystemChrome.setPreferredOrientations(const [
+                            DeviceOrientation.portraitUp,
+                            DeviceOrientation.portraitDown,
+                          ]);
+                        },
+                        child: const Text(
+                          '返回竖屏',
+                          style: TextStyle(fontSize: 12.0, color: Colors.grey),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 37),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: Center(
+                        child: Knob(
+                          controller: _controllerV,
+                          width: 100,
+                          height: 100,
+                          style: KnobStyle(
+                            labelOffset: 3.0,
+                            labelStyle: Theme.of(context).textTheme.bodySmall,
+                            majorTickStyle: const MajorTickStyle(length: 5),
+                            pointerStyle: const PointerStyle(
+                              color: Colors.green,
+                              offset: 10.0,
+                            ),
+                            showMinorTickLabels: false,
+                            minorTicksPerInterval: 4,
+                            controlStyle: const ControlStyle(
+                              backgroundColor: Colors.white,
+                              shadowColor: Colors.green,
+                              glowColor: Colors.green,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 5,
+                      child: Center(
+                        child: Knob(
+                          controller: _controllerA,
+                          width: 100,
+                          height: 100,
+                          style: KnobStyle(
+                            labelOffset: 3.0,
+                            labelStyle: Theme.of(context).textTheme.bodySmall,
+                            majorTickStyle: const MajorTickStyle(length: 5),
+                            pointerStyle: const PointerStyle(
+                              color: Color.fromARGB(255, 255, 187, 0),
+                              offset: 10.0,
+                            ),
+                            showMinorTickLabels: true,
+                            controlStyle: const ControlStyle(
+                              backgroundColor: Colors.white,
+                              shadowColor: Color.fromARGB(255, 255, 187, 0),
+                              glowColor: Color.fromARGB(255, 255, 187, 0),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 25),
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('电压', style: TextStyle(fontSize: 16.0)),
-                    SizedBox(width: 120),
-                    Text('电流', style: TextStyle(fontSize: 16.0)),
+                    Expanded(
+                      flex: 5,
+                      child: Center(
+                        child: Text(
+                          '电压(V)',
+                          style: TextStyle(
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 5,
+                      child: Center(
+                        child: Text(
+                          '电流(A)',
+                          style: TextStyle(
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 37),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [_getStwitch()],
