@@ -32,7 +32,7 @@
 ## 开发与编译
 ### 克隆项目
 ```bash
-git clone https://github.com/your-username/sk120x-controller-app.git
+git clone https://github.com/worldyun/sk120x-controller-app.git
 cd sk120x-controller-app
 ```
 
